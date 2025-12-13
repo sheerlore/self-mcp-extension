@@ -1,0 +1,15 @@
+[project]
+name = "self-mcp-extension"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-core>=1.2.0",
+    "langchain-google-genai>=4.0.0",
+    "langgraph>=1.0.5",
+    "mcp>=1.24.0",
+    "python-dotenv>=1.2.1",
+    "textual>=6.8.0",
+    "watchdog>=6.0.0",
+]

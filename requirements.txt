@@ -1,0 +1,7 @@
+textual
+langchain-google-genai
+langchain-core
+langgraph
+python-dotenv
+mcp
+watchdog
