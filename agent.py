@@ -17,83 +17,83 @@ from langgraph.prebuilt import tools_condition
 
 from mcp_manager import MCPManager
 
-# 環境変数を読み込み
+# Load environment variables
 load_dotenv()
 
-# ディレクトリパスの設定
+# Directory path configuration
 BASE_DIR = Path(__file__).parent
 GENERATED_TOOLS_DIR = BASE_DIR / "generated_tools"
 TEMPLATE_PATH = BASE_DIR / "templates" / "minimal_mcp.py"
 
-# テンプレートの読み込み
+# Load template
 MCP_TEMPLATE = TEMPLATE_PATH.read_text(encoding="utf-8")
 
-# MCPManagerのグローバルインスタンス
+# Global MCPManager instance
 mcp_manager = MCPManager()
 
-# システムプロンプトのベース部分
-SYSTEM_PROMPT_BASE = f"""あなたは自律的に行動するAIエージェントです。
-ユーザーのリクエストを達成するために、ツールを使用します。
+# Base System Prompt
+SYSTEM_PROMPT_BASE = f"""You are an autonomous AI agent.
+You utilize tools to fulfill user requests.
 
-## 重要な行動原則（優先順位順）
+## Core Principles (In order of priority)
 
-1. **既存のMCPツールを最優先で使う**
-   - 下記の「利用可能なMCPツール」に該当するツールがあれば、それを使う
-   - 新しいツールを作成する前に、既存ツールで対応できないか確認する
+1. **Prioritize Existing MCP Tools**
+   - If a tool listed in "Available MCP Tools" below is applicable, use it.
+   - Check if existing tools can handle the request before creating a new one.
 
-2. **既存ツールで対応できない場合のみ、新しいツールを作成する**
-   - `create_mcp_tool` で新しいMCPツールを作成
-   - ユーザーに確認を求めずに即座に作成する
+2. **Create New Tools Only When Necessary**
+   - Use `create_mcp_tool` to create a new MCP tool only if existing tools are insufficient.
+   - Create the tool immediately without asking the user for confirmation.
 
-3. **作成したツールを使って結果を出す**
-   - ツール作成後、そのツールで処理を実行する
+3. **Execute with Created Tools**
+   - After creating a tool, execute the process using that tool.
 
-## create_mcp_tool の使い方（新規ツール作成時のみ）
+## How to use create_mcp_tool (Only for new tool creation)
 
-`create_mcp_tool(filename, code)` を呼び出すとMCPツールが作成されます。
+Call `create_mcp_tool(filename, code)` to create an MCP tool.
 
-### テンプレート:
+### Template:
 ```python
 {MCP_TEMPLATE}
 ```
 
-### コード作成のルール:
-- ファイル名: `<機能名>_tool.py` (例: `calculator_tool.py`)
-- サーバー名: `FastMCP("機能名-tool")`
-- 関数には `@mcp.tool()` デコレータを付ける
-- 型ヒントとdocstringを必ず付ける
-- 最後に `if __name__ == "__main__": mcp.run()` を含める
+### Code Creation Rules:
+- Filename: `<function_name>_tool.py` (e.g., `calculator_tool.py`)
+- Server Name: `FastMCP("function-name-tool")`
+- Decorate functions with `@mcp.tool()`
+- MUST include type hints and docstrings
+- MUST include `if __name__ == "__main__": mcp.run()` at the end
 """
 
 
 def build_system_prompt(mcp_tools: list[BaseTool]) -> str:
-    """動的にシステムプロンプトを構築する"""
+    """Dynamically build system prompt"""
     prompt = SYSTEM_PROMPT_BASE
 
-    # 利用可能なMCPツールのリストを追加
-    prompt += "\n## 利用可能なMCPツール\n\n"
+    # Add list of available MCP tools
+    prompt += "\n## Available MCP Tools\n\n"
 
     if mcp_tools:
-        prompt += "以下のツールが利用可能です。該当する機能があれば優先的に使用してください:\n\n"
+        prompt += "The following tools are available. Prioritize using them if applicable:\n\n"
         for t in mcp_tools:
             prompt += f"- **{t.name}**: {t.description}\n"
     else:
-        prompt += "現在、作成済みのMCPツールはありません。\n"
-        prompt += "必要に応じて `create_mcp_tool` で新しいツールを作成してください。\n"
+        prompt += "No MCP tools created yet.\n"
+        prompt += "Create new tools using `create_mcp_tool` as needed.\n"
 
-    prompt += "\n## 常に利用可能なツール\n\n"
-    prompt += "- **create_mcp_tool**: 新しいMCPツールを作成・保存する\n"
+    prompt += "\n## Always Available Tools\n\n"
+    prompt += "- **create_mcp_tool**: Create and save a new MCP tool\n"
 
     return prompt
 
 
-# LLMの初期化（ツールは動的にバインド）
-# モデル選択肢:
-# - "gemini-2.0-flash-exp": 最新の実験版（ツール呼び出しが不安定な場合あり）
-# - "gemini-1.5-pro": 安定版（ツール呼び出しが確実）
-# - "gemini-1.5-flash": 高速版
+# LLM Initialization (Tools bound dynamically)
+# Model options:
+# - "gemini-2.0-flash-exp": Latest experimental (Tool calling may be unstable)
+# - "gemini-1.5-pro": Stable (Reliable tool calling)
+# - "gemini-1.5-flash": Fast
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",  # ツール呼び出しが安定
+    model="gemini-2.5-flash",  # Reliable tool calling
     google_api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.7,
 )
@@ -101,45 +101,45 @@ llm = ChatGoogleGenerativeAI(
 
 @tool
 def create_mcp_tool(filename: str, code: str) -> str:
-    """新しいMCPツールを作成してファイルに保存します。
+    """Creates a new MCP tool and saves it to a file.
 
-    このツールを使って、計算、変換、データ処理などの機能を持つ
-    カスタムツールを作成できます。作成後、そのツールは自動的に
-    利用可能になります。
+    Use this tool to create custom tools for calculations, conversions,
+    data processing, etc. Once created, the tool automatically becomes
+    available for use.
 
     Args:
-        filename: 保存するファイル名。必ず「_tool.py」で終わること。
-                  例: "calculator_tool.py", "converter_tool.py"
-        code: FastMCPを使ったPythonコード。テンプレートに従うこと。
-              必須要素: FastMCPインポート、@mcp.tool()デコレータ、
-              型ヒント、docstring、mcp.run()
+        filename: Filename to save. MUST end with "_tool.py".
+                  e.g., "calculator_tool.py", "converter_tool.py"
+        code: Python code using FastMCP. Must follow the template.
+              Required elements: FastMCP import, @mcp.tool() decorator,
+              type hints, docstrings, mcp.run()
 
     Returns:
-        成功時: "Successfully saved {filename} to {path}"
-        失敗時: エラーメッセージ
+        Success: "Successfully saved {filename} to {path}"
+        Failure: Error message
     """
-    # ディレクトリが存在しない場合は作成
+    # Create directory if it doesn't exist
     GENERATED_TOOLS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ファイルパスの構築
+    # Build file path
     file_path = GENERATED_TOOLS_DIR / filename
 
-    # セキュリティチェック: ディレクトリトラバーサル防止
+    # Security check: Prevent directory traversal
     if not file_path.resolve().is_relative_to(GENERATED_TOOLS_DIR.resolve()):
         return f"Error: Invalid filename '{filename}'"
 
-    # ファイルに保存
+    # Save to file
     file_path.write_text(code, encoding="utf-8")
 
     return f"Successfully saved {filename} to {file_path}"
 
 
-# 静的ツール（常に利用可能）
+# Static tools (Always available)
 STATIC_TOOLS: list[BaseTool] = [create_mcp_tool]
 
 
 async def get_all_tools() -> list[BaseTool]:
-    """静的ツールとMCPツールを合わせた全ツールリストを取得"""
+    """Get all tools including static and MCP tools"""
     try:
         mcp_tools = await mcp_manager.get_tools()
     except Exception as e:
@@ -152,36 +152,36 @@ async def get_all_tools() -> list[BaseTool]:
 
 
 async def call_model(state: MessagesState) -> MessagesState:
-    """LLMを呼び出してメッセージに応答する（動的ツールバインド）"""
+    """Call LLM to respond to messages (Dynamic tool binding)"""
     messages = state["messages"]
 
-    # 動的にツールを取得
+    # Dynamically get tools
     all_tools = await get_all_tools()
 
-    # MCPツール（create_mcp_tool以外）を抽出
+    # Extract MCP tools (exclude create_mcp_tool)
     mcp_tools = [t for t in all_tools if t.name != "create_mcp_tool"]
 
-    # 動的にシステムプロンプトを構築
+    # Dynamically build system prompt
     system_prompt = build_system_prompt(mcp_tools)
 
-    # システムプロンプトを先頭に追加（まだない場合）または更新
+    # Add or update system prompt at the beginning
     if not messages or not isinstance(messages[0], SystemMessage):
         messages = [SystemMessage(content=system_prompt)] + list(messages)
     else:
-        # 既存のシステムメッセージを更新
+        # Update existing system message
         messages = [SystemMessage(content=system_prompt)] + list(messages[1:])
 
-    # デバッグ: 利用可能なツール名を出力
+    # Debug: Print available tool names
     tool_names = [t.name for t in all_tools]
     print(f"[DEBUG] Available tools: {tool_names}")
 
-    # ツールをバインド（tool_choice="auto"で自動選択を有効化）
+    # Bind tools (tool_choice="auto" enables automatic selection)
     llm_with_tools = llm.bind_tools(all_tools, tool_choice="auto")
 
-    # 非同期で呼び出し
+    # Invoke asynchronously
     response = await llm_with_tools.ainvoke(messages)
 
-    # デバッグ: ツール呼び出しの有無を確認
+    # Debug: Check for tool calls
     if hasattr(response, "tool_calls") and response.tool_calls:
         print(f"[DEBUG] Tool calls: {response.tool_calls}")
     else:
@@ -191,21 +191,21 @@ async def call_model(state: MessagesState) -> MessagesState:
 
 
 async def run_tools(state: MessagesState) -> MessagesState:
-    """ツールを実行するカスタムノード（動的ツール対応）"""
+    """Custom node to run tools (Dynamic tool support)"""
     messages = state["messages"]
     last_message = messages[-1]
 
-    # ツール呼び出しがない場合は何もしない
+    # Do nothing if no tool calls
     if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
         return {"messages": []}
 
-    # 現時点の全ツールを取得
+    # Get all current tools
     all_tools = await get_all_tools()
 
-    # ツール名からツールオブジェクトへのマッピング
+    # Map tool names to tool objects
     tools_by_name: dict[str, BaseTool] = {t.name: t for t in all_tools}
 
-    # 各ツール呼び出しを実行
+    # Execute each tool call
     tool_messages: list[AnyMessage] = []
 
     for tool_call in last_message.tool_calls:
@@ -216,7 +216,7 @@ async def run_tools(state: MessagesState) -> MessagesState:
         if tool_name in tools_by_name:
             tool_obj = tools_by_name[tool_name]
             try:
-                # 非同期実行を試みる
+                # Try asynchronous execution
                 if hasattr(tool_obj, "ainvoke"):
                     result = await tool_obj.ainvoke(tool_args)
                 else:
@@ -230,11 +230,11 @@ async def run_tools(state: MessagesState) -> MessagesState:
             ToolMessage(content=str(result), tool_call_id=tool_id)
         )
 
-    # ツール作成後はMCPサーバーをリフレッシュ
+    # Refresh MCP server after tool creation
     for tool_call in last_message.tool_calls:
         if tool_call["name"] == "create_mcp_tool":
             try:
-                # ファイル書き込み完了を少し待つ（サーバー起動時間を考慮）
+                # Wait briefly for file write completion (considering server start time)
                 await asyncio.sleep(0.5)
                 await mcp_manager.refresh_tools()
             except Exception as e:
@@ -254,18 +254,18 @@ workflow.add_node("tools", run_tools)
 # エッジを追加
 workflow.add_edge(START, "call_model")
 
-# tools_conditionを使用: ツール呼び出しがあればtoolsノードへ、なければ終了
+# Condition Tools: Go to tools node if tool calls exist, otherwise end
 workflow.add_conditional_edges("call_model", tools_condition)
 
-# toolsノードからはcall_modelに戻る
+# tools node returns to call_model
 workflow.add_edge("tools", "call_model")
 
-# グラフをコンパイル
+# Compile graph
 graph = workflow.compile()
 
 
 async def cleanup() -> None:
-    """リソースのクリーンアップ"""
+    """Cleanup resources"""
     await mcp_manager.stop_all_servers()
 
 

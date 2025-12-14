@@ -15,111 +15,112 @@ from textual.binding import Binding
 
 from agent import graph, get_all_tools
 
-# 環境変数を読み込み
+# Load environment variables
 load_dotenv()
 
 
 class AgentTUI(App):
-    """AI Agent実験用TUIアプリケーション"""
+    """AI Agent Experiment TUI Application"""
 
     CSS = """
     Screen {
-        background: #0a0a0a;
+        background: #050505;
+        align: center middle;
     }
 
     Header {
-        background: #1a1a2e;
+        background: #002b00;
         color: #00ff41;
         text-style: bold;
+        dock: top;
+        height: 1;
     }
 
     Footer {
-        background: #1a1a2e;
+        background: #002b00;
         color: #00ff41;
+        dock: bottom;
+        height: 1;
     }
 
     #main-container {
+        width: 100%;
         height: 100%;
+        padding: 1;
     }
 
     .column {
         height: 100%;
-        border: solid #00ff41;
-        background: #0d0d0d;
+        border: solid #004400;
+        background: #0c0c0c;
+        margin: 0 1;
     }
 
     #chat-column {
-        width: 60%;
+        width: 2fr;
     }
 
     #system-column {
-        width: 40%;
+        width: 1fr;
     }
 
     .panel-title {
-        dock: top;
-        height: 3;
-        background: #16213e;
+        height: 1;
+        background: #003300;
         color: #00ff41;
         text-align: center;
         text-style: bold;
-        padding: 1;
-        border-bottom: solid #00ff41;
+        border-bottom: solid #004400;
     }
 
-    #chat-log {
+    RichLog {
         height: 1fr;
-        background: #0a0a0a;
+        background: #080808;
         color: #e0e0e0;
-        padding: 1;
+        padding: 0 1;
+        scrollbar-gutter: stable;
         scrollbar-color: #00ff41;
-        scrollbar-color-hover: #00ff88;
-        scrollbar-color-active: #00ffaa;
+        border: none;
+    }
+    
+    #chat-log {
+        background: #0a0a0a;
     }
 
     #mcp-tools-panel {
-        height: auto;
-        max-height: 40%;
-        background: #0d0d0d;
-        border-bottom: solid #00ff41;
+        height: 35%;
+        border-bottom: solid #004400;
+        background: #0c0c0c;
     }
 
     #mcp-tools-log {
-        height: auto;
-        max-height: 100%;
-        min-height: 5;
         background: #0a0a0a;
         color: #00ccff;
-        padding: 1;
         scrollbar-color: #00ccff;
     }
 
     #system-log {
-        height: 1fr;
-        background: #0a0a0a;
+        background: #080808;
         color: #ffcc00;
-        padding: 1;
         scrollbar-color: #ff6600;
-        scrollbar-color-hover: #ff8833;
-        scrollbar-color-active: #ffaa55;
     }
 
     #chat-input {
-        dock: bottom;
         height: 3;
-        background: #1a1a2e;
+        background: #050505;
         color: #00ff41;
-        border: solid #00ff41;
+        border: solid #004400;
         padding: 0 1;
+        margin-top: 1;
     }
 
     #chat-input:focus {
-        border: solid #00ff88;
-        background: #1e1e3e;
+        border: solid #00ff41;
+        background: #001100;
     }
 
     Input > .input--placeholder {
-        color: #4a4a4a;
+        color: #336633;
     }
     """
 
@@ -130,40 +131,40 @@ class AgentTUI(App):
         Binding("escape", "focus_input", "Focus Input", show=False),
     ]
 
-    TITLE = "🤖 AI Agent Lab"
-    SUB_TITLE = "Self-Evolving MCP Terminal"
+    TITLE = "⚡ SELF-MCP TERMINAL"
+    SUB_TITLE = "v1.0 // DO NOT POWER OFF"
 
     def compose(self) -> ComposeResult:
-        """UIコンポーネントを構成"""
+        """Configure UI components"""
         yield Header()
 
         with Horizontal(id="main-container"):
-            # 左側: メインチャット
+            # Left: Main Chat
             with Vertical(id="chat-column", classes="column"):
-                yield Static("[ MAIN CHAT ]", classes="panel-title")
+                yield Static("[ COMMUNICATION CHANNEL ]", classes="panel-title")
                 yield RichLog(
                     id="chat-log", highlight=True, markup=True, wrap=True
                 )
                 yield Input(
-                    placeholder=">>> メッセージを入力してEnter...",
+                    placeholder=">>> INPUT COMMAND SEQUENCE...",
                     id="chat-input"
                 )
 
-            # 右側: MCPツール + システムログ
+            # Right: MCP Tools + System Log
             with Vertical(id="system-column", classes="column"):
-                # MCPツールリストパネル
+                # MCP Tools Panel
                 with Vertical(id="mcp-tools-panel"):
                     yield Static(
-                        "[ 🔧 MCP TOOLS ] (Ctrl+R: Refresh)",
+                        "[ MODULE REGISTRY ] (CTRL+R: REFRESH)",
                         classes="panel-title"
                     )
                     yield RichLog(
                         id="mcp-tools-log", highlight=True, markup=True
                     )
 
-                # システムログパネル
+                # System Log Panel
                 yield Static(
-                    "[ SYSTEM LOG ]",
+                    "[ KERNEL LOG ]",
                     classes="panel-title"
                 )
                 yield RichLog(id="system-log", highlight=True, markup=True)
@@ -171,91 +172,91 @@ class AgentTUI(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        """アプリ起動時の初期化"""
-        self._log_system("[bold green]>>> システム起動[/]")
-        self._log_system("[dim]AI Agent Lab v1.0 initialized[/]")
-        self._log_system("[dim]LangGraph + Gemini backend ready[/]")
-        self._log_system("[dim]Waiting for user input...[/]")
+        """Initialize application on mount"""
+        self._log_system("[bold green]>>> SYSTEM BOOT SEQUENCE INITIATED[/]")
+        self._log_system("[dim]Kernel: Self-MCP Terminal v1.0[/]")
+        self._log_system("[dim]Modules: LangGraph [ONLINE], Gemini [ONLINE][/]")
+        self._log_system("[dim]Status: WAITING FOR COMMAND...[/]")
         self._log_system("")
 
         self._log_chat(
-            "[bold cyan]🤖 AI:[/] こんにちは！AIエージェント実験環境へようこそ。"
+            "[bold cyan]🤖 AI:[/] SYSTEM ONLINE. READY TO EVOLVE."
         )
         self._log_chat(
-            "[dim]    何か質問があれば、下の入力欄に入力してください。[/]"
+            "[dim]    Enter command or request to begin adaptation protocol.[/]"
         )
         self._log_chat("")
 
-        # 入力フィールドにフォーカス
+        # Focus input field
         self.query_one("#chat-input", Input).focus()
 
-        # MCPツールリストを読み込み
+        # Load MCP tools list
         asyncio.create_task(self._refresh_mcp_tools())
 
     def _get_timestamp(self) -> str:
-        """現在のタイムスタンプを取得"""
+        """Get current timestamp"""
         return datetime.now().strftime("%H:%M:%S")
 
     def _log_chat(self, message: str) -> None:
-        """チャットログにメッセージを追加"""
+        """Add message to chat log"""
         chat_log = self.query_one("#chat-log", RichLog)
         chat_log.write(message)
 
     def _log_system(self, message: str) -> None:
-        """システムログにメッセージを追加"""
+        """Add message to system log"""
         system_log = self.query_one("#system-log", RichLog)
         timestamp = self._get_timestamp()
         system_log.write(f"[dim]{timestamp}[/] {message}")
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """メッセージ送信時の処理"""
+        """Handle message submission"""
         message = event.value.strip()
         if not message:
             return
 
-        # 入力をクリア
+        # Clear input
         event.input.value = ""
 
-        # ユーザーメッセージを表示
-        self._log_chat(f"[bold magenta]👤 You:[/] {message}")
-        self._log_system("[cyan]>>> User input received[/]")
+        # Display user message
+        self._log_chat(f"[bold magenta]👤 OPERATOR:[/] {message}")
+        self._log_system("[cyan]>>> INPUT SEQUENCE RECEIVED[/]")
 
-        # 非同期でAI応答を処理
+        # Process AI response asynchronously
         asyncio.create_task(self._process_ai_response(message))
 
     async def _process_ai_response(self, user_message: str) -> None:
-        """AIの応答を非同期で処理（LangGraph経由）"""
+        """Process AI response asynchronously (via LangGraph)"""
         import time
         start_time = time.time()
 
         self._log_system("[bold cyan]━━━ NEW REQUEST ━━━[/]")
-        self._log_system(f"[cyan]📝 Input: {user_message[:50]}...[/]"
+        self._log_system(f"[cyan]📝 DATA PACKET: {user_message[:50]}...[/]"
                          if len(user_message) > 50
-                         else f"[cyan]📝 Input: {user_message}[/]")
+                         else f"[cyan]📝 DATA PACKET: {user_message}[/]")
 
-        # 利用可能なツールを表示
+        # Display available tools
         try:
             all_tools = await get_all_tools()
             mcp_tools = [t for t in all_tools if t.name != "create_mcp_tool"]
             if mcp_tools:
-                self._log_system("[blue]🔧 Available MCP Tools:[/]")
+                self._log_system("[blue]🔧 MODULES AVAILABLE:[/]")
                 for t in mcp_tools:
                     desc = t.description[:40] + "..." \
                         if len(t.description) > 40 else t.description
                     self._log_system(f"[dim]   • {t.name}: {desc}[/]")
             else:
-                self._log_system("[dim]🔧 No MCP tools available yet[/]")
+                self._log_system("[dim]🔧 NO MODULES DETECTED[/]")
         except Exception:
             self._log_system("[dim]🔧 Tools: loading...[/]")
 
-        self._log_chat("[dim]    🤖 考え中...[/]")
+        self._log_chat("[dim]    🤖 PROCESSING...[/]")
 
         final_response = ""
         token_count = 0
         tool_call_count = 0
 
         try:
-            # LangGraphのastream_eventsでストリーミング処理
+            # Stream events using LangGraph's astream_events
             async for event in graph.astream_events(
                 {"messages": [HumanMessage(content=user_message)]},
                 version="v2"
@@ -263,12 +264,12 @@ class AgentTUI(App):
                 event_type = event.get("event")
                 event_name = event.get("name", "")
 
-                # グラフノードの遷移を追跡
+                # Track graph node transitions
                 if event_type == "on_chain_start":
                     if event_name in ["call_model", "tools"]:
                         icon = "🧠" if event_name == "call_model" else "🔧"
                         self._log_system(
-                            f"[blue]▶ Node: {icon} {event_name}[/]"
+                            f"[blue]▶ PROCESS NODE: {icon} {event_name.upper()}[/]"
                         )
 
                 elif event_type == "on_chain_end":
@@ -285,7 +286,7 @@ class AgentTUI(App):
                         params = data.get("invocation_params")
                         if isinstance(params, dict):
                             model = str(params.get("model", "Gemini"))
-                    self._log_system(f"[yellow]🧠 LLM: {model}[/]")
+                    self._log_system(f"[yellow]🧠 COGNITIVE MODEL: {model}[/]")
 
                 elif event_type == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk")
@@ -298,12 +299,12 @@ class AgentTUI(App):
 
                 elif event_type == "on_chat_model_end":
                     output = event.get("data", {}).get("output")
-                    # ツール呼び出しの検出
+                    # Detect tool calls
                     if output and hasattr(output, "tool_calls"):
                         tool_calls = output.tool_calls
                         if tool_calls:
                             self._log_system(
-                                f"[yellow]🔗 Tool calls detected: "
+                                f"[yellow]🔗 EXTERNAL CALLS DETECTED: "
                                 f"{len(tool_calls)}[/]"
                             )
                             for tc in tool_calls:
@@ -311,8 +312,8 @@ class AgentTUI(App):
                                     f"[yellow]   └─ {tc.get('name', '?')}[/]"
                                 )
                         else:
-                            self._log_system("[green]✓ Response ready[/]")
-                    # 最終応答を取得
+                            self._log_system("[green]✓ OUTPUT GENERATED[/]")
+                    # Get final response
                     if output and hasattr(output, "content"):
                         if output.content:
                             final_response = output.content
@@ -324,31 +325,31 @@ class AgentTUI(App):
 
                     self._log_system("")
                     self._log_system(
-                        f"[bold yellow]━━━ TOOL #{tool_call_count} ━━━[/]"
+                        f"[bold yellow]━━━ EXECUTING MODULE #{tool_call_count} ━━━[/]"
                     )
                     self._log_system(
                         f"[bold yellow]🔨 {tool_name}[/]"
                     )
 
-                    # ツール固有の詳細表示
+                    # Display tool-specific details
                     if tool_name == "create_mcp_tool":
                         filename = tool_input.get("filename", "?")
                         code = tool_input.get("code", "")
                         lines = code.count("\n") + 1 if code else 0
                         self._log_system(
-                            f"[yellow]   📄 File: {filename}[/]"
+                            f"[yellow]   📄 [DATA_TARGET]: {filename}[/]"
                         )
                         self._log_system(
-                            f"[yellow]   📏 Code: {lines} lines[/]"
+                            f"[yellow]   📏 [PAYLOAD_SIZE]: {lines} lines[/]"
                         )
                     else:
-                        # その他のツール
+                        # Other tools
                         for key, value in tool_input.items():
                             val_str = str(value)
                             if len(val_str) > 30:
                                 val_str = val_str[:30] + "..."
                             self._log_system(
-                                f"[yellow]   {key}: {val_str}[/]"
+                                f"[yellow]   [PARAM:{key}]: {val_str}[/]"
                             )
 
                 elif event_type == "on_tool_end":
@@ -359,43 +360,43 @@ class AgentTUI(App):
 
                     if "Successfully" in str(tool_output):
                         self._log_system(
-                            "[bold green]✅ Success[/]"
+                            "[bold green]✅ OPERATION SUCCESSFUL[/]"
                         )
                     elif "Error" in str(tool_output):
                         self._log_system(
-                            "[bold red]❌ Failed[/]"
+                            "[bold red]❌ OPERATION FAILED[/]"
                         )
                     else:
                         self._log_system(
-                            "[bold green]✓ Done[/]"
+                            "[bold green]✓ SEQUENCE COMPLETE[/]"
                         )
-                    self._log_system(f"[dim]   Result: {output_str}[/]")
+                    self._log_system(f"[dim]   >> OUTPUT: {output_str}[/]")
                     self._log_system(
                         "[bold yellow]━━━━━━━━━━━━━━━━━━━━[/]"
                     )
 
-            # 処理完了
+            # Process complete
             elapsed = time.time() - start_time
             self._log_system("")
-            self._log_system("[bold cyan]━━━ COMPLETED ━━━[/]")
+            self._log_system("[bold cyan]━━━ REQUEST COMPLETE ━━━[/]")
             self._log_system(
-                f"[cyan]⏱ Total time: {elapsed:.2f}s[/]"
+                f"[cyan]⏱ EXECUTION TIME: {elapsed:.2f}s[/]"
             )
             self._log_system(
                 f"[cyan]📊 Tokens: {token_count} | Tools: {tool_call_count}[/]"
             )
             self._log_system("")
 
-            # ツールが使用された場合、MCPツールリストを更新
+            # Update MCP tool list if tools were used
             if tool_call_count > 0:
                 await self._refresh_mcp_tools()
 
-            # AI応答を表示
+            # Display AI response
             if final_response:
                 self._log_chat(f"[bold cyan]🤖 AI:[/] {final_response}")
             else:
                 self._log_chat(
-                    "[bold red]🤖 AI:[/] 応答を取得できませんでした。"
+                    "[bold red]🤖 AI:[/] NO RESPONSE RECEIVED FROM CORE."
                 )
             self._log_chat("")
 
@@ -404,28 +405,28 @@ class AgentTUI(App):
             self._log_system("[bold red]━━━ ERROR ━━━[/]")
             self._log_system(f"[red]❌ {type(e).__name__}: {e}[/]")
             self._log_system(f"[dim]   After {elapsed:.2f}s[/]")
-            self._log_chat(f"[bold red]🤖 AI:[/] エラー: {e}")
+            self._log_chat(f"[bold red]🤖 AI:[/] SYSTEM ERROR: {e}")
             self._log_chat("")
 
     def action_clear_logs(self) -> None:
-        """ログをクリア"""
+        """Clear logs"""
         self.query_one("#chat-log", RichLog).clear()
         self.query_one("#system-log", RichLog).clear()
-        self._log_system("[bold green]>>> ログをクリアしました[/]")
+        self._log_system("[bold green]>>> LOG BUFFER CLEARED[/]")
 
     def action_focus_input(self) -> None:
-        """入力フィールドにフォーカス"""
+        """Focus input field"""
         self.query_one("#chat-input", Input).focus()
 
     def action_refresh_tools(self) -> None:
-        """MCPツールリストをリフレッシュ"""
+        """Refresh MCP tools list"""
         asyncio.create_task(self._refresh_mcp_tools())
 
     async def _refresh_mcp_tools(self) -> None:
-        """MCPツールリストを更新"""
+        """Update MCP tools list"""
         mcp_log = self.query_one("#mcp-tools-log", RichLog)
         mcp_log.clear()
-        mcp_log.write("[dim]Loading MCP tools...[/]")
+        mcp_log.write("[dim]SCANNING FOR MODULES...[/]")
 
         try:
             all_tools = await get_all_tools()
@@ -435,23 +436,23 @@ class AgentTUI(App):
 
             if mcp_tools:
                 mcp_log.write(
-                    f"[bold green]✓ {len(mcp_tools)} tool(s) available[/]"
+                    f"[bold green]✓ {len(mcp_tools)} MODULE(S) ONLINE[/]"
                 )
                 mcp_log.write("")
 
                 for tool in mcp_tools:
-                    # ツール名
+                    # Tool name
                     mcp_log.write(f"[bold cyan]📦 {tool.name}[/]")
 
-                    # 説明
+                    # Description
                     desc = tool.description or "No description"
-                    # 説明を複数行に分割して表示
+                    # Split description into multiple lines
                     desc_lines = desc.split("\n")
-                    for line in desc_lines[:3]:  # 最大3行
+                    for line in desc_lines[:3]:  # Max 3 lines
                         if line.strip():
                             mcp_log.write(f"[dim]   {line.strip()}[/]")
 
-                    # 引数情報
+                    # Argument information
                     if hasattr(tool, "args_schema") and tool.args_schema:
                         args_schema = tool.args_schema
                         if hasattr(args_schema, "model_json_schema"):
@@ -460,25 +461,25 @@ class AgentTUI(App):
                             if props:
                                 args_str = ", ".join(props.keys())
                                 mcp_log.write(
-                                    f"[yellow]   Args: {args_str}[/]"
+                                    f"[yellow]   PARAMS: {args_str}[/]"
                                 )
                     mcp_log.write("")
             else:
                 mcp_log.write("[dim]No MCP tools available yet.[/]")
                 mcp_log.write("")
-                mcp_log.write("[dim]Ask AI to create a tool![/]")
-                mcp_log.write('[dim]Example: "Create a calculator tool"[/]')
+                mcp_log.write("[dim]INITIATE TOOL GENERATION PROTOCOL[/]")
+                mcp_log.write('[dim]EX: "Create quantum calculator module"[/]')
 
-            self._log_system("[green]✓ MCP tools refreshed[/]")
+            self._log_system("[green]✓ MODULE REGISTRY UPDATED[/]")
 
         except Exception as e:
             mcp_log.clear()
-            mcp_log.write(f"[red]Error loading tools: {e}[/]")
-            self._log_system(f"[red]✗ Failed to refresh tools: {e}[/]")
+            mcp_log.write(f"[red]MODULE SCAN ERROR: {e}[/]")
+            self._log_system(f"[red]✗ REFRESH FAILURE: {e}[/]")
 
 
 def main():
-    """アプリケーションのエントリーポイント"""
+    """Application entry point"""
     app = AgentTUI()
     app.run()
 

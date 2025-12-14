@@ -16,7 +16,7 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from pydantic import BaseModel, Field, create_model
 
-# ディレクトリパスの設定
+# Directory path configuration
 BASE_DIR = Path(__file__).parent
 GENERATED_TOOLS_DIR = BASE_DIR / "generated_tools"
 
@@ -25,7 +25,7 @@ def json_schema_to_pydantic_field(
     name: str,
     schema: dict[str, Any]
 ) -> tuple[type, Any]:
-    """JSONスキーマからPydanticフィールドを作成"""
+    """Create Pydantic field from JSON schema"""
     type_mapping = {
         "string": str,
         "integer": int,
@@ -47,7 +47,7 @@ def create_args_model(
     tool_name: str,
     input_schema: dict[str, Any]
 ) -> type[BaseModel]:
-    """MCPツールの入力スキーマからPydanticモデルを動的に作成"""
+    """Dynamically create Pydantic model from MCP tool input schema"""
     properties = input_schema.get("properties", {})
     required = input_schema.get("required", [])
 
@@ -56,7 +56,7 @@ def create_args_model(
         python_type, field = json_schema_to_pydantic_field(
             prop_name, prop_schema
         )
-        # 必須フィールドでない場合はデフォルト値をNoneに
+        # Set default to None if not required
         if prop_name not in required and field.default is ...:
             field = Field(default=None, description=field.description)
         fields[prop_name] = (python_type, field)
@@ -67,7 +67,7 @@ def create_args_model(
 
 @dataclass
 class MCPToolInfo:
-    """MCPツールの情報を保持"""
+    """Holds MCP tool information"""
     name: str
     description: str
     input_schema: dict[str, Any]
@@ -80,10 +80,10 @@ async def call_mcp_tool(
     arguments: dict[str, Any]
 ) -> str:
     """
-    MCPツールを呼び出す（毎回新しい接続を作成）
+    Call MCP tool (Create new connection each time)
 
-    Note: stdio_clientは同一タスク内でenter/exitする必要があるため、
-    呼び出しごとに新しい接続を作成・終了する設計としている。
+    Note: Designed to create and close connection per call because
+    stdio_client needs to enter/exit within the same task.
     """
     server_params = StdioServerParameters(
         command=sys.executable,
@@ -97,7 +97,7 @@ async def call_mcp_tool(
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments)
 
-                # 結果のcontentからテキストを抽出
+                # Extract text from result content
                 if result.content:
                     texts = [
                         c.text for c in result.content if hasattr(c, "text")
@@ -110,9 +110,9 @@ async def call_mcp_tool(
 
 async def scan_mcp_tools(tool_file: Path) -> list[MCPToolInfo]:
     """
-    MCPサーバーに接続してツール情報を取得
+    Connect to MCP server to get tool info
 
-    Note: この関数は接続を作成して情報を取得後、すぐに閉じる。
+    Note: This function creates a connection, gets info, and closes immediately.
     """
     server_params = StdioServerParameters(
         command=sys.executable,
@@ -142,7 +142,7 @@ async def scan_mcp_tools(tool_file: Path) -> list[MCPToolInfo]:
 
 
 class MCPManager:
-    """generated_tools/ 内のMCPサーバーを管理"""
+    """Manage MCP servers in generated_tools/"""
 
     def __init__(self):
         self._tools_info_cache: list[MCPToolInfo] = []
@@ -151,13 +151,13 @@ class MCPManager:
         self._lock = asyncio.Lock()
 
     def scan_tool_files(self) -> list[Path]:
-        """generated_tools/ 内の.pyファイルをスキャン"""
+        """Scan .py files in generated_tools/"""
         if not GENERATED_TOOLS_DIR.exists():
             return []
         return list(GENERATED_TOOLS_DIR.glob("*.py"))
 
     async def _scan_all_tools(self) -> list[MCPToolInfo]:
-        """全てのツールファイルをスキャンしてツール情報を取得"""
+        """Scan all tool files to get tool info"""
         tool_files = self.scan_tool_files()
         all_tools_info: list[MCPToolInfo] = []
 
@@ -168,7 +168,7 @@ class MCPManager:
         return all_tools_info
 
     async def initialize(self) -> None:
-        """全てのツールファイルをスキャンして情報をキャッシュ"""
+        """Scan all tool files and cache info"""
         async with self._lock:
             if self._initialized:
                 return
@@ -177,22 +177,22 @@ class MCPManager:
             self._initialized = True
 
     async def get_tools(self) -> list[StructuredTool]:
-        """全MCPツールをLangChain形式で返す"""
+        """Return all MCP tools in LangChain format"""
         await self.initialize()
 
-        # キャッシュがあればそれを返す
+        # Return cache if available
         if self._tools_cache:
             return self._tools_cache
 
         tools: list[StructuredTool] = []
 
         for tool_info in self._tools_info_cache:
-            # 入力スキーマからPydanticモデルを作成
+            # Create Pydantic model from input schema
             args_model = create_args_model(
                 tool_info.name, tool_info.input_schema
             )
 
-            # クロージャ用に変数をキャプチャ
+            # Capture variables for closure
             _tool_file = tool_info.tool_file
             _tool_name = tool_info.name
 
@@ -201,7 +201,7 @@ class MCPManager:
                 __tool_name: str = _tool_name,
                 **kwargs: Any
             ) -> str:
-                """非同期でMCPツールを呼び出す"""
+                """Call MCP tool asynchronously"""
                 return await call_mcp_tool(__tool_file, __tool_name, kwargs)
 
             def sync_run(
@@ -209,12 +209,12 @@ class MCPManager:
                 __tool_name: str = _tool_name,
                 **kwargs: Any
             ) -> str:
-                """同期でMCPツールを呼び出す"""
+                """Call MCP tool synchronously"""
                 return asyncio.run(
                     call_mcp_tool(__tool_file, __tool_name, kwargs)
                 )
 
-            # StructuredToolを作成
+            # Create StructuredTool
             langchain_tool = StructuredTool(
                 name=tool_info.name,
                 description=tool_info.description,
@@ -228,7 +228,7 @@ class MCPManager:
         return tools
 
     async def refresh_tools(self) -> list[StructuredTool]:
-        """ツールを再スキャンして更新"""
+        """Rescan tools and update"""
         async with self._lock:
             self._initialized = False
             self._tools_info_cache.clear()
@@ -238,20 +238,19 @@ class MCPManager:
 
     async def stop_all_servers(self) -> None:
         """
-        互換性のために残しているメソッド
+        Method kept for compatibility
 
-        Note: 新しい設計では永続的な接続を保持しないため、
-        このメソッドは何もしない。
+        Note: Does nothing as new design does not hold persistent connections.
         """
         pass
 
 
-# シングルトンインスタンス
+# Singleton instance
 mcp_manager = MCPManager()
 
 
 async def main():
-    """テスト実行"""
+    """Test execution"""
     print("=== MCPManager Test ===\n")
 
     print("Scanning tool files...")
@@ -270,13 +269,13 @@ async def main():
         print(f"  - {tool.name}: {tool.description}")
         print(f"    Args: {tool.args_schema.model_json_schema()}\n")
 
-    # テスト実行
+    # Run test
     if tools:
         print("Testing first tool...")
         test_tool = tools[0]
         print(f"Tool: {test_tool.name}")
 
-        # XORツールがあればテスト
+        # Test XOR tool if exists
         if test_tool.name == "calculate_xor":
             result = await test_tool.ainvoke({
                 "bits1": "1100",

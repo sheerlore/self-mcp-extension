@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 
-# サーバー名を定義
+# Define server name
 mcp = FastMCP("my-tool")
 
 
