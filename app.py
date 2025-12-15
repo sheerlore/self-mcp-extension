@@ -54,6 +54,8 @@ class AgentTUI(App):
         border: solid #004400;
         background: #0c0c0c;
         margin: 0 1;
+        border-title-color: #00ff41;
+        border-title-align: center;
     }
 
     #chat-column {
@@ -62,15 +64,17 @@ class AgentTUI(App):
 
     #system-column {
         width: 1fr;
+        border: none;
+        background: transparent;
     }
 
-    .panel-title {
-        height: 1;
-        background: #003300;
-        color: #00ff41;
-        text-align: center;
-        text-style: bold;
-        border-bottom: solid #004400;
+    .system-panel {
+        height: 50%;
+        border: solid #004400;
+        background: #0c0c0c;
+        border-title-color: #00ff41;
+        border-title-align: center;
+        margin-bottom: 1;
     }
 
     RichLog {
@@ -85,12 +89,6 @@ class AgentTUI(App):
     
     #chat-log {
         background: #0a0a0a;
-    }
-
-    #mcp-tools-panel {
-        height: 35%;
-        border-bottom: solid #004400;
-        background: #0c0c0c;
     }
 
     #mcp-tools-log {
@@ -131,8 +129,8 @@ class AgentTUI(App):
         Binding("escape", "focus_input", "Focus Input", show=False),
     ]
 
-    TITLE = "⚡ SELF-MCP TERMINAL"
-    SUB_TITLE = "v1.0 // DO NOT POWER OFF"
+    TITLE = ":: SELF-MCP-EXTENSION (demo)"
+    SUB_TITLE = "v1.0"
 
     def compose(self) -> ComposeResult:
         """Configure UI components"""
@@ -140,8 +138,8 @@ class AgentTUI(App):
 
         with Horizontal(id="main-container"):
             # Left: Main Chat
-            with Vertical(id="chat-column", classes="column"):
-                yield Static("[ COMMUNICATION CHANNEL ]", classes="panel-title")
+            with Vertical(id="chat-column", classes="column") as chat_col:
+                chat_col.border_title = "[ COMMUNICATION CHANNEL ]"
                 yield RichLog(
                     id="chat-log", highlight=True, markup=True, wrap=True
                 )
@@ -151,23 +149,18 @@ class AgentTUI(App):
                 )
 
             # Right: MCP Tools + System Log
-            with Vertical(id="system-column", classes="column"):
+            with Vertical(id="system-column"):
                 # MCP Tools Panel
-                with Vertical(id="mcp-tools-panel"):
-                    yield Static(
-                        "[ MODULE REGISTRY ] (CTRL+R: REFRESH)",
-                        classes="panel-title"
-                    )
+                with Vertical(id="mcp-tools-panel", classes="system-panel") as tools_panel:
+                    tools_panel.border_title = "[ MODULE REGISTRY ] (CTRL+R: REFRESH)"
                     yield RichLog(
                         id="mcp-tools-log", highlight=True, markup=True
                     )
 
                 # System Log Panel
-                yield Static(
-                    "[ KERNEL LOG ]",
-                    classes="panel-title"
-                )
-                yield RichLog(id="system-log", highlight=True, markup=True)
+                with Vertical(id="system-log-panel", classes="system-panel") as sys_panel:
+                    sys_panel.border_title = "[ KERNEL LOG ]"
+                    yield RichLog(id="system-log", highlight=True, markup=True)
 
         yield Footer()
 
@@ -180,7 +173,7 @@ class AgentTUI(App):
         self._log_system("")
 
         self._log_chat(
-            "[bold cyan]🤖 AI:[/] SYSTEM ONLINE. READY TO EVOLVE."
+            "[bold cyan][ AI_CORE ]:[/]"
         )
         self._log_chat(
             "[dim]    Enter command or request to begin adaptation protocol.[/]"
@@ -218,7 +211,7 @@ class AgentTUI(App):
         event.input.value = ""
 
         # Display user message
-        self._log_chat(f"[bold magenta]👤 OPERATOR:[/] {message}")
+        self._log_chat(f"[bold magenta]>> OPERATOR ::[/] {message}")
         self._log_system("[cyan]>>> INPUT SEQUENCE RECEIVED[/]")
 
         # Process AI response asynchronously
@@ -230,26 +223,26 @@ class AgentTUI(App):
         start_time = time.time()
 
         self._log_system("[bold cyan]━━━ NEW REQUEST ━━━[/]")
-        self._log_system(f"[cyan]📝 DATA PACKET: {user_message[:50]}...[/]"
+        self._log_system(f"[cyan][DATA_PCKT] >> {user_message[:50]}...[/]"
                          if len(user_message) > 50
-                         else f"[cyan]📝 DATA PACKET: {user_message}[/]")
+                         else f"[cyan][DATA_PCKT] >> {user_message}[/]")
 
         # Display available tools
         try:
             all_tools = await get_all_tools()
             mcp_tools = [t for t in all_tools if t.name != "create_mcp_tool"]
             if mcp_tools:
-                self._log_system("[blue]🔧 MODULES AVAILABLE:[/]")
+                self._log_system("[blue][::] MODULES AVAILABLE:[/]")
                 for t in mcp_tools:
                     desc = t.description[:40] + "..." \
                         if len(t.description) > 40 else t.description
-                    self._log_system(f"[dim]   • {t.name}: {desc}[/]")
+                    self._log_system(f"[dim]   + {t.name}: {desc}[/]")
             else:
-                self._log_system("[dim]🔧 NO MODULES DETECTED[/]")
+                self._log_system("[dim][!] NO MODULES DETECTED[/]")
         except Exception:
-            self._log_system("[dim]🔧 Tools: loading...[/]")
+            self._log_system("[dim] Tools: loading...[/]")
 
-        self._log_chat("[dim]    🤖 PROCESSING...[/]")
+        self._log_chat("[dim]    >>> PROCESSING...[/]")
 
         final_response = ""
         token_count = 0
@@ -267,9 +260,9 @@ class AgentTUI(App):
                 # Track graph node transitions
                 if event_type == "on_chain_start":
                     if event_name in ["call_model", "tools"]:
-                        icon = "🧠" if event_name == "call_model" else "🔧"
+                        icon = "[LLM]" if event_name == "call_model" else "[TOOL]"
                         self._log_system(
-                            f"[blue]▶ PROCESS NODE: {icon} {event_name.upper()}[/]"
+                            f"[blue]>>> PROCESS NODE: {icon} {event_name.upper()}[/]"
                         )
 
                 elif event_type == "on_chain_end":
@@ -286,7 +279,7 @@ class AgentTUI(App):
                         params = data.get("invocation_params")
                         if isinstance(params, dict):
                             model = str(params.get("model", "Gemini"))
-                    self._log_system(f"[yellow]🧠 COGNITIVE MODEL: {model}[/]")
+                    self._log_system(f"[yellow][::] COGNITIVE MODEL: {model}[/]")
 
                 elif event_type == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk")
@@ -304,15 +297,15 @@ class AgentTUI(App):
                         tool_calls = output.tool_calls
                         if tool_calls:
                             self._log_system(
-                                f"[yellow]🔗 EXTERNAL CALLS DETECTED: "
+                                f"[yellow][>>] EXTERNAL CALLS DETECTED: "
                                 f"{len(tool_calls)}[/]"
                             )
                             for tc in tool_calls:
                                 self._log_system(
-                                    f"[yellow]   └─ {tc.get('name', '?')}[/]"
+                                    f"[yellow]   + {tc.get('name', '?')}[/]"
                                 )
                         else:
-                            self._log_system("[green]✓ OUTPUT GENERATED[/]")
+                            self._log_system("[green][OK] OUTPUT GENERATED[/]")
                     # Get final response
                     if output and hasattr(output, "content"):
                         if output.content:
@@ -325,10 +318,10 @@ class AgentTUI(App):
 
                     self._log_system("")
                     self._log_system(
-                        f"[bold yellow]━━━ EXECUTING MODULE #{tool_call_count} ━━━[/]"
+                        f"[bold yellow]// EXECUTING MODULE #{tool_call_count} //[/]"
                     )
                     self._log_system(
-                        f"[bold yellow]🔨 {tool_name}[/]"
+                        f"[bold yellow][EXEC] {tool_name}[/]"
                     )
 
                     # Display tool-specific details
@@ -337,10 +330,10 @@ class AgentTUI(App):
                         code = tool_input.get("code", "")
                         lines = code.count("\n") + 1 if code else 0
                         self._log_system(
-                            f"[yellow]   📄 [DATA_TARGET]: {filename}[/]"
+                            f"[yellow]   [DATA_TARGET]: {filename}[/]"
                         )
                         self._log_system(
-                            f"[yellow]   📏 [PAYLOAD_SIZE]: {lines} lines[/]"
+                            f"[yellow]   [PAYLOAD_SIZE]: {lines} lines[/]"
                         )
                     else:
                         # Other tools
@@ -360,19 +353,19 @@ class AgentTUI(App):
 
                     if "Successfully" in str(tool_output):
                         self._log_system(
-                            "[bold green]✅ OPERATION SUCCESSFUL[/]"
+                            "[bold green][OK] OPERATION SUCCESSFUL[/]"
                         )
                     elif "Error" in str(tool_output):
                         self._log_system(
-                            "[bold red]❌ OPERATION FAILED[/]"
+                            "[bold red][ERR] OPERATION FAILED[/]"
                         )
                     else:
                         self._log_system(
-                            "[bold green]✓ SEQUENCE COMPLETE[/]"
+                            "[bold green][DONE] SEQUENCE COMPLETE[/]"
                         )
                     self._log_system(f"[dim]   >> OUTPUT: {output_str}[/]")
                     self._log_system(
-                        "[bold yellow]━━━━━━━━━━━━━━━━━━━━[/]"
+                        "[bold yellow]--------------------[/]"
                     )
 
             # Process complete
@@ -380,10 +373,10 @@ class AgentTUI(App):
             self._log_system("")
             self._log_system("[bold cyan]━━━ REQUEST COMPLETE ━━━[/]")
             self._log_system(
-                f"[cyan]⏱ EXECUTION TIME: {elapsed:.2f}s[/]"
+                f"[cyan][TIME]: {elapsed:.2f}s[/]"
             )
             self._log_system(
-                f"[cyan]📊 Tokens: {token_count} | Tools: {tool_call_count}[/]"
+                f"[cyan][STAT] Tokens: {token_count} | Tools: {tool_call_count}[/]"
             )
             self._log_system("")
 
@@ -393,26 +386,38 @@ class AgentTUI(App):
 
             # Display AI response
             if final_response:
-                self._log_chat(f"[bold cyan]🤖 AI:[/] {final_response}")
+                self._log_chat(f"[bold cyan][ AI_CORE ]:[/] {final_response}")
             else:
                 self._log_chat(
-                    "[bold red]🤖 AI:[/] NO RESPONSE RECEIVED FROM CORE."
+                    "[bold red][ AI_CORE ]:[/] NO RESPONSE RECEIVED FROM CORE."
                 )
             self._log_chat("")
 
         except Exception as e:
             elapsed = time.time() - start_time
             self._log_system("[bold red]━━━ ERROR ━━━[/]")
-            self._log_system(f"[red]❌ {type(e).__name__}: {e}[/]")
+            self._log_system(f"[red][ERR] {type(e).__name__}: {e}[/]")
             self._log_system(f"[dim]   After {elapsed:.2f}s[/]")
-            self._log_chat(f"[bold red]🤖 AI:[/] SYSTEM ERROR: {e}")
+            self._log_chat(f"[bold red][ AI_CORE ]:[/] SYSTEM ERROR: {e}")
             self._log_chat("")
 
     def action_clear_logs(self) -> None:
-        """Clear logs"""
+        """Clear logs and reset to initial state"""
         self.query_one("#chat-log", RichLog).clear()
         self.query_one("#system-log", RichLog).clear()
-        self._log_system("[bold green]>>> LOG BUFFER CLEARED[/]")
+        
+        # Restore initial messages
+        self._log_system("[bold green]>>> SYSTEM BUFFER RESET[/]")
+        self._log_system("[dim]Status: WAITING FOR COMMAND...[/]")
+        self._log_system("")
+
+        self._log_chat(
+            "[bold cyan][ AI_CORE ]:[/]"
+        )
+        self._log_chat(
+            "[dim]    Enter command or request to begin adaptation protocol.[/]"
+        )
+        self._log_chat("")
 
     def action_focus_input(self) -> None:
         """Focus input field"""
@@ -436,13 +441,13 @@ class AgentTUI(App):
 
             if mcp_tools:
                 mcp_log.write(
-                    f"[bold green]✓ {len(mcp_tools)} MODULE(S) ONLINE[/]"
+                    f"[bold green][OK] {len(mcp_tools)} MODULE(S) ONLINE[/]"
                 )
                 mcp_log.write("")
 
                 for tool in mcp_tools:
                     # Tool name
-                    mcp_log.write(f"[bold cyan]📦 {tool.name}[/]")
+                    mcp_log.write(f"[bold cyan][MOD] {tool.name}[/]")
 
                     # Description
                     desc = tool.description or "No description"
@@ -470,12 +475,12 @@ class AgentTUI(App):
                 mcp_log.write("[dim]INITIATE TOOL GENERATION PROTOCOL[/]")
                 mcp_log.write('[dim]EX: "Create quantum calculator module"[/]')
 
-            self._log_system("[green]✓ MODULE REGISTRY UPDATED[/]")
+            self._log_system("[green][UPD] MODULE REGISTRY UPDATED[/]")
 
         except Exception as e:
             mcp_log.clear()
             mcp_log.write(f"[red]MODULE SCAN ERROR: {e}[/]")
-            self._log_system(f"[red]✗ REFRESH FAILURE: {e}[/]")
+            self._log_system(f"[red][ERR] REFRESH FAILURE: {e}[/]")
 
 
 def main():
