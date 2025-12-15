@@ -16,7 +16,6 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from pydantic import BaseModel, Field, create_model
 
-# Directory path configuration
 BASE_DIR = Path(__file__).parent
 GENERATED_TOOLS_DIR = BASE_DIR / "generated_tools"
 
@@ -25,7 +24,6 @@ def json_schema_to_pydantic_field(
     name: str,
     schema: dict[str, Any]
 ) -> tuple[type, Any]:
-    """Create Pydantic field from JSON schema"""
     type_mapping = {
         "string": str,
         "integer": int,
@@ -47,7 +45,6 @@ def create_args_model(
     tool_name: str,
     input_schema: dict[str, Any]
 ) -> type[BaseModel]:
-    """Dynamically create Pydantic model from MCP tool input schema"""
     properties = input_schema.get("properties", {})
     required = input_schema.get("required", [])
 
@@ -67,7 +64,6 @@ def create_args_model(
 
 @dataclass
 class MCPToolInfo:
-    """Holds MCP tool information"""
     name: str
     description: str
     input_schema: dict[str, Any]
@@ -79,12 +75,6 @@ async def call_mcp_tool(
     tool_name: str,
     arguments: dict[str, Any]
 ) -> str:
-    """
-    Call MCP tool (Create new connection each time)
-
-    Note: Designed to create and close connection per call because
-    stdio_client needs to enter/exit within the same task.
-    """
     server_params = StdioServerParameters(
         command=sys.executable,
         args=[str(tool_file)],
@@ -97,7 +87,6 @@ async def call_mcp_tool(
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments)
 
-                # Extract text from result content
                 if result.content:
                     texts = [
                         c.text for c in result.content if hasattr(c, "text")
@@ -109,11 +98,6 @@ async def call_mcp_tool(
 
 
 async def scan_mcp_tools(tool_file: Path) -> list[MCPToolInfo]:
-    """
-    Connect to MCP server to get tool info
-
-    Note: This function creates a connection, gets info, and closes immediately.
-    """
     server_params = StdioServerParameters(
         command=sys.executable,
         args=[str(tool_file)],
@@ -187,12 +171,10 @@ class MCPManager:
         tools: list[StructuredTool] = []
 
         for tool_info in self._tools_info_cache:
-            # Create Pydantic model from input schema
             args_model = create_args_model(
                 tool_info.name, tool_info.input_schema
             )
 
-            # Capture variables for closure
             _tool_file = tool_info.tool_file
             _tool_name = tool_info.name
 
@@ -201,7 +183,6 @@ class MCPManager:
                 __tool_name: str = _tool_name,
                 **kwargs: Any
             ) -> str:
-                """Call MCP tool asynchronously"""
                 return await call_mcp_tool(__tool_file, __tool_name, kwargs)
 
             def sync_run(
@@ -209,12 +190,10 @@ class MCPManager:
                 __tool_name: str = _tool_name,
                 **kwargs: Any
             ) -> str:
-                """Call MCP tool synchronously"""
                 return asyncio.run(
                     call_mcp_tool(__tool_file, __tool_name, kwargs)
                 )
 
-            # Create StructuredTool
             langchain_tool = StructuredTool(
                 name=tool_info.name,
                 description=tool_info.description,
@@ -228,7 +207,6 @@ class MCPManager:
         return tools
 
     async def refresh_tools(self) -> list[StructuredTool]:
-        """Rescan tools and update"""
         async with self._lock:
             self._initialized = False
             self._tools_info_cache.clear()
@@ -237,15 +215,10 @@ class MCPManager:
         return await self.get_tools()
 
     async def stop_all_servers(self) -> None:
-        """
-        Method kept for compatibility
-
-        Note: Does nothing as new design does not hold persistent connections.
-        """
         pass
 
 
-# Singleton instance
+# Singleton
 mcp_manager = MCPManager()
 
 

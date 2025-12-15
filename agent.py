@@ -17,21 +17,15 @@ from langgraph.prebuilt import tools_condition
 
 from mcp_manager import MCPManager
 
-# Load environment variables
 load_dotenv()
 
-# Directory path configuration
 BASE_DIR = Path(__file__).parent
 GENERATED_TOOLS_DIR = BASE_DIR / "generated_tools"
 TEMPLATE_PATH = BASE_DIR / "templates" / "minimal_mcp.py"
-
-# Load template
 MCP_TEMPLATE = TEMPLATE_PATH.read_text(encoding="utf-8")
 
-# Global MCPManager instance
 mcp_manager = MCPManager()
 
-# Base System Prompt
 SYSTEM_PROMPT_BASE = f"""You are an autonomous AI agent.
 You utilize tools to fulfill user requests.
 
@@ -70,7 +64,6 @@ def build_system_prompt(mcp_tools: list[BaseTool]) -> str:
     """Dynamically build system prompt"""
     prompt = SYSTEM_PROMPT_BASE
 
-    # Add list of available MCP tools
     prompt += "\n## Available MCP Tools\n\n"
 
     if mcp_tools:
@@ -87,13 +80,8 @@ def build_system_prompt(mcp_tools: list[BaseTool]) -> str:
     return prompt
 
 
-# LLM Initialization (Tools bound dynamically)
-# Model options:
-# - "gemini-2.0-flash-exp": Latest experimental (Tool calling may be unstable)
-# - "gemini-1.5-pro": Stable (Reliable tool calling)
-# - "gemini-1.5-flash": Fast
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",  # Reliable tool calling
+    model="gemini-2.5-flash",
     google_api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.7,
 )
@@ -155,33 +143,21 @@ async def call_model(state: MessagesState) -> MessagesState:
     """Call LLM to respond to messages (Dynamic tool binding)"""
     messages = state["messages"]
 
-    # Dynamically get tools
     all_tools = await get_all_tools()
-
-    # Extract MCP tools (exclude create_mcp_tool)
     mcp_tools = [t for t in all_tools if t.name != "create_mcp_tool"]
-
-    # Dynamically build system prompt
     system_prompt = build_system_prompt(mcp_tools)
 
-    # Add or update system prompt at the beginning
     if not messages or not isinstance(messages[0], SystemMessage):
         messages = [SystemMessage(content=system_prompt)] + list(messages)
     else:
-        # Update existing system message
         messages = [SystemMessage(content=system_prompt)] + list(messages[1:])
 
-    # Debug: Print available tool names
     tool_names = [t.name for t in all_tools]
     print(f"[DEBUG] Available tools: {tool_names}")
 
-    # Bind tools (tool_choice="auto" enables automatic selection)
     llm_with_tools = llm.bind_tools(all_tools, tool_choice="auto")
-
-    # Invoke asynchronously
     response = await llm_with_tools.ainvoke(messages)
 
-    # Debug: Check for tool calls
     if hasattr(response, "tool_calls") and response.tool_calls:
         print(f"[DEBUG] Tool calls: {response.tool_calls}")
     else:
@@ -195,17 +171,12 @@ async def run_tools(state: MessagesState) -> MessagesState:
     messages = state["messages"]
     last_message = messages[-1]
 
-    # Do nothing if no tool calls
     if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
         return {"messages": []}
 
-    # Get all current tools
     all_tools = await get_all_tools()
 
-    # Map tool names to tool objects
     tools_by_name: dict[str, BaseTool] = {t.name: t for t in all_tools}
-
-    # Execute each tool call
     tool_messages: list[AnyMessage] = []
 
     for tool_call in last_message.tool_calls:
@@ -230,11 +201,9 @@ async def run_tools(state: MessagesState) -> MessagesState:
             ToolMessage(content=str(result), tool_call_id=tool_id)
         )
 
-    # Refresh MCP server after tool creation
     for tool_call in last_message.tool_calls:
         if tool_call["name"] == "create_mcp_tool":
             try:
-                # Wait briefly for file write completion (considering server start time)
                 await asyncio.sleep(0.5)
                 await mcp_manager.refresh_tools()
             except Exception as e:
@@ -245,27 +214,17 @@ async def run_tools(state: MessagesState) -> MessagesState:
 
 
 # StateGraphの構築
+# START -> [call_model <-> tools] -> END
 workflow = StateGraph(MessagesState)
-
-# ノードを追加
 workflow.add_node("call_model", call_model)
 workflow.add_node("tools", run_tools)
-
-# エッジを追加
 workflow.add_edge(START, "call_model")
-
-# Condition Tools: Go to tools node if tool calls exist, otherwise end
 workflow.add_conditional_edges("call_model", tools_condition)
-
-# tools node returns to call_model
 workflow.add_edge("tools", "call_model")
 
-# Compile graph
 graph = workflow.compile()
 
-
 async def cleanup() -> None:
-    """Cleanup resources"""
     await mcp_manager.stop_all_servers()
 
 
