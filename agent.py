@@ -1,9 +1,3 @@
-"""
-AI Agent - LangGraph based conversational agent
-Using Google Generative AI (Gemini) as the LLM backend.
-Capable of creating and using MCP server tools dynamically.
-"""
-
 import asyncio
 import os
 from pathlib import Path
@@ -61,7 +55,6 @@ Call `create_mcp_tool(filename, code)` to create an MCP tool.
 
 
 def build_system_prompt(mcp_tools: list[BaseTool]) -> str:
-    """Dynamically build system prompt"""
     prompt = SYSTEM_PROMPT_BASE
 
     prompt += "\n## Available MCP Tools\n\n"
@@ -105,23 +98,19 @@ def create_mcp_tool(filename: str, code: str) -> str:
         Success: "Successfully saved {filename} to {path}"
         Failure: Error message
     """
-    # Create directory if it doesn't exist
     GENERATED_TOOLS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Build file path
     file_path = GENERATED_TOOLS_DIR / filename
 
-    # Security check: Prevent directory traversal
+    # 一応：ディレクトリトラバーサルチェック
     if not file_path.resolve().is_relative_to(GENERATED_TOOLS_DIR.resolve()):
         return f"Error: Invalid filename '{filename}'"
 
-    # Save to file
     file_path.write_text(code, encoding="utf-8")
 
     return f"Successfully saved {filename} to {file_path}"
 
 
-# Static tools (Always available)
 STATIC_TOOLS: list[BaseTool] = [create_mcp_tool]
 
 
@@ -166,7 +155,6 @@ async def call_model(state: MessagesState) -> MessagesState:
 
 
 async def run_tools(state: MessagesState) -> MessagesState:
-    """Custom node to run tools (Dynamic tool support)"""
     messages = state["messages"]
     last_message = messages[-1]
 

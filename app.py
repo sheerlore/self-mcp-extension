@@ -1,8 +1,3 @@
-"""
-AI Agent Experiment TUI - Self-Evolving MCP
-A hacker-style terminal interface for AI agent interactions.
-"""
-
 import asyncio
 from datetime import datetime
 

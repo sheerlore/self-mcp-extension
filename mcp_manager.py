@@ -1,10 +1,3 @@
-"""
-MCP Manager - MCP server processes and LangChain tool integration.
-
-Note: Each tool invocation creates a fresh connection to avoid
-async context issues with stdio_client across different tasks.
-"""
-
 import asyncio
 import sys
 from dataclasses import dataclass
@@ -126,8 +119,6 @@ async def scan_mcp_tools(tool_file: Path) -> list[MCPToolInfo]:
 
 
 class MCPManager:
-    """Manage MCP servers in generated_tools/"""
-
     def __init__(self):
         self._tools_info_cache: list[MCPToolInfo] = []
         self._tools_cache: list[StructuredTool] = []
@@ -135,13 +126,11 @@ class MCPManager:
         self._lock = asyncio.Lock()
 
     def scan_tool_files(self) -> list[Path]:
-        """Scan .py files in generated_tools/"""
         if not GENERATED_TOOLS_DIR.exists():
             return []
         return list(GENERATED_TOOLS_DIR.glob("*.py"))
 
     async def _scan_all_tools(self) -> list[MCPToolInfo]:
-        """Scan all tool files to get tool info"""
         tool_files = self.scan_tool_files()
         all_tools_info: list[MCPToolInfo] = []
 
@@ -152,7 +141,6 @@ class MCPManager:
         return all_tools_info
 
     async def initialize(self) -> None:
-        """Scan all tool files and cache info"""
         async with self._lock:
             if self._initialized:
                 return
@@ -161,10 +149,8 @@ class MCPManager:
             self._initialized = True
 
     async def get_tools(self) -> list[StructuredTool]:
-        """Return all MCP tools in LangChain format"""
         await self.initialize()
 
-        # Return cache if available
         if self._tools_cache:
             return self._tools_cache
 
@@ -220,44 +206,3 @@ class MCPManager:
 
 # Singleton
 mcp_manager = MCPManager()
-
-
-async def main():
-    """Test execution"""
-    print("=== MCPManager Test ===\n")
-
-    print("Scanning tool files...")
-    files = mcp_manager.scan_tool_files()
-    print(f"Found {len(files)} tool files: {[f.name for f in files]}\n")
-
-    if not files:
-        print("No tool files found. Create some tools first!")
-        return
-
-    print("Getting LangChain tools...")
-    tools = await mcp_manager.get_tools()
-    print(f"Converted {len(tools)} tools:\n")
-
-    for tool in tools:
-        print(f"  - {tool.name}: {tool.description}")
-        print(f"    Args: {tool.args_schema.model_json_schema()}\n")
-
-    # Run test
-    if tools:
-        print("Testing first tool...")
-        test_tool = tools[0]
-        print(f"Tool: {test_tool.name}")
-
-        # Test XOR tool if exists
-        if test_tool.name == "calculate_xor":
-            result = await test_tool.ainvoke({
-                "bits1": "1100",
-                "bits2": "1010"
-            })
-            print(f"Result: {result}")
-
-    print("\nDone!")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
